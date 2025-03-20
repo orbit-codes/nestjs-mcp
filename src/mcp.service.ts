@@ -141,7 +141,7 @@ export class MCPService implements OnModuleInit, OnModuleDestroy {
                     this.logger.error(`Error executing resource '${name}'`, error);
                     throw error;
                 }
-            }
+            },
         );
 
         this.logger.log(`Registered MCP resource: ${name}`);
@@ -165,7 +165,7 @@ export class MCPService implements OnModuleInit, OnModuleDestroy {
                     throw error;
                 }
             },
-            { description }
+            { description },
         );
 
         this.logger.log(`Registered MCP tool: ${name}`);
@@ -191,7 +191,7 @@ export class MCPService implements OnModuleInit, OnModuleDestroy {
                     throw error;
                 }
             },
-            { description }
+            { description },
         );
 
         this.logger.log(`Registered MCP prompt: ${name}`);
