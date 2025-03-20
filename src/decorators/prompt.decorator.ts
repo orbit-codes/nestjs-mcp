@@ -2,12 +2,13 @@ import { SetMetadata } from '@nestjs/common';
 
 import { MetadataKey } from '@lib/types/metadata.type';
 
-export interface IResource {
+export interface IPrompt {
     name: string;
     description: string;
+    template: string;
     parameters?: any;
 }
 
-export const Resource = (props: IResource) => {
-    return SetMetadata(MetadataKey.MCP_RESOURCE, props);
+export const Prompt = (props: IPrompt) => {
+    return SetMetadata(MetadataKey.MCP_PROMPT, props);
 };

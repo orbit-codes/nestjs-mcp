@@ -1,6 +1,6 @@
-import { SetMetadata } from "@nestjs/common";
+import { SetMetadata } from '@nestjs/common';
 
-import { MetadataKey } from "../types/metadata.type";
+import { MetadataKey } from '@lib/types/metadata.type';
 
 export interface ITool {
     name: string;
@@ -10,4 +10,4 @@ export interface ITool {
 
 export const Tool = (props: ITool) => {
     return SetMetadata(MetadataKey.MCP_TOOL, props);
-}
+};

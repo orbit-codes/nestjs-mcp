@@ -1,5 +1,5 @@
-import { IMCPOptions } from "./mcp-options.interface";
+import { IMCPOptions } from '@lib/types/mcp-options.interface';
 
 export interface IMCPOptionsFactory {
-    createMcpOptions(): Promise<IMCPOptions> | IMCPOptions;
+    createMCPOptions(): Promise<IMCPOptions> | IMCPOptions;
 }
