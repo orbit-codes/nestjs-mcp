@@ -1,0 +1,17 @@
+{
+  "name": "nestjs-mcp",
+  "version": "1.0.0",
+  "description": "A NestJS package to integrate MCP",
+  "main": "./dist/main.js",
+  "repository": "git@github.com:orbit-codes/nestjs-mcp.git",
+  "author": "Orbit Codes",
+  "license": "MIT",
+  "devDependencies": {
+    "@modelcontextprotocol/sdk": "^1.7.0",
+    "@nestjs/common": "^11.0.12",
+    "joi": "^17.13.3",
+    "reflect-metadata": "^0.2.2",
+    "tsup": "^8.4.0",
+    "typescript": "^5.8.2"
+  }
+}
