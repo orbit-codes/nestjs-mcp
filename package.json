@@ -1,5 +1,5 @@
 {
-  "name": "nestjs-mcp",
+  "name": "@orbit-codes/nestjs-mcp",
   "version": "1.0.0",
   "description": "A NestJS package to integrate MCP",
   "main": "./dist/index.js",
