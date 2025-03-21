@@ -3,17 +3,12 @@ import { resolve } from 'path';
 
 export default defineConfig({
     entry: ['src/index.ts'],
-    format: ['cjs', 'esm'],
+    format: ['cjs'],
     dts: true,
     splitting: false,
     sourcemap: true,
     clean: true,
     outDir: 'dist',
-    outExtension({ format }) {
-        return {
-            js: format === 'cjs' ? '.js' : '.mjs',
-        };
-    },
     treeshake: true,
     esbuildOptions(options) {
         options.alias = {

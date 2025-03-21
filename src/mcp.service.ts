@@ -2,28 +2,26 @@ import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/commo
 import { MetadataScanner, Reflector } from '@nestjs/core';
 import { DiscoveryService } from '@nestjs/core/discovery';
 
-import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp';
-import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio';
+import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { Request, Response } from 'express';
+
 import { z } from 'zod';
 
 import { MetadataKey } from '@lib/types/metadata.type';
 import type { IResource, ITool, IPrompt } from '@lib/decorators';
 import type { IMCPOptions } from '@lib/types';
+import { NestSSEAdapter } from '@lib/transport/sse-transport';
 
-export type TTransportType = 'sse' | 'stdio' | 'both';
-
-interface MCPTransport {
-    sse?: SSEServerTransport;
-    stdio?: StdioServerTransport;
-    [key: string]: SSEServerTransport | StdioServerTransport | undefined;
-}
+export type TTransportType = 'stdio';
 
 @Injectable()
 export class MCPService implements OnModuleInit, OnModuleDestroy {
     private readonly logger = new Logger(MCPService.name);
     private server: McpServer;
-    private transports: MCPTransport = {};
+    private stdioTransport: StdioServerTransport | null = null;
+    private sseAdapter: NestSSEAdapter | null = null;
+    private transportConnected = false;
 
     constructor(
         private readonly options: IMCPOptions,
@@ -40,46 +38,79 @@ export class MCPService implements OnModuleInit, OnModuleDestroy {
 
     async onModuleInit() {
         await this.scanAndRegisterProviders();
-        await this.setupTransports();
+
+        // Create the SSE adapter but don't connect it yet - this happens when a client connects
+        this.sseAdapter = new NestSSEAdapter({
+            messagesEndpoint: this.options.messagesEndpoint || 'mcp/messages',
+            sseEndpoint: this.options.sseEndpoint || 'mcp/sse',
+            globalApiPrefix: this.options.globalApiPrefix || '',
+        });
+
+        // Initialize stdio transport if needed
+        await this.setupStdioTransport();
     }
 
     async onModuleDestroy() {
-        // Close all active transports
-        for (const transportType in this.transports) {
-            if (this.transports[transportType]) {
-                try {
-                    // Remove the transport from the server
-                    await this.server.connect(this.transports[transportType]!).then(() => {
-                        this.logger.log(`Disconnected MCP ${transportType} transport`);
-                    });
-                } catch (error) {
-                    this.logger.error(`Failed to disconnect ${transportType} transport`, error);
-                }
+        if (this.stdioTransport) {
+            try {
+                this.logger.log('Disconnecting stdio transport');
+            } catch (error) {
+                this.logger.error('Failed to disconnect stdio transport', error);
             }
         }
     }
 
-    private async setupTransports(transportType: TTransportType = 'sse') {
+    // Handle SSE connection from controller
+    async handleSSEConnection(req: Request, res: Response): Promise<void> {
+        if (!this.sseAdapter) {
+            this.logger.error('SSE adapter not initialized');
+            res.status(500).send('SSE transport not initialized');
+            return;
+        }
+
         try {
-            if (transportType === 'sse' || transportType === 'both') {
-                const sseTransport = new SSEServerTransport({
-                    messagesEndpoint: this.options.messagesEndpoint || '/mcp/messages',
-                    sseEndpoint: this.options.sseEndpoint || '/mcp/sse',
-                });
+            // Handle the SSE connection
+            await this.sseAdapter.handleSSE(req, res);
 
-                this.transports.sse = sseTransport;
-                await this.server.connect(sseTransport);
-                this.logger.log(`MCP SSE transport connected on ${this.options.messagesEndpoint || '/mcp/messages'} and ${this.options.sseEndpoint || '/mcp/sse'}`);
+            // Get the transport
+            const transport = this.sseAdapter.getTransport();
+
+            // Connect the transport to the server if not already connected
+            if (!this.transportConnected) {
+                await this.server.connect(transport);
+                this.transportConnected = true;
+                this.logger.log('Connected SSE transport to server');
             }
+        } catch (error) {
+            this.logger.error('Error handling SSE connection', error);
+            if (!res.headersSent) {
+                res.status(500).send('Error handling SSE connection');
+            }
+        }
+    }
 
-            if (transportType === 'stdio' || transportType === 'both') {
-                const stdioTransport = new StdioServerTransport();
-                this.transports.stdio = stdioTransport;
-                await this.server.connect(stdioTransport);
+    // Handle messages from controller
+    async handleMessages(req: Request, res: Response): Promise<void> {
+        if (!this.sseAdapter) {
+            this.logger.error('SSE adapter not initialized');
+            if (!res.headersSent) {
+                res.status(500).send('SSE transport not initialized');
+            }
+            return;
+        }
+
+        await this.sseAdapter.handleMessages(req, res);
+    }
+
+    private async setupStdioTransport() {
+        try {
+            if (this.options.enableStdio) {
+                this.stdioTransport = new StdioServerTransport();
+                await this.server.connect(this.stdioTransport);
                 this.logger.log('MCP stdio transport connected');
             }
         } catch (error) {
-            this.logger.error('Failed to setup MCP transports', error);
+            this.logger.error('Failed to setup MCP stdio transport', error);
             throw error;
         }
     }
@@ -128,7 +159,7 @@ export class MCPService implements OnModuleInit, OnModuleDestroy {
             template,
             {
                 description,
-                parameters: this.convertParametersToZod(parameters),
+                parameters: parameters ? this.convertParametersToZod(parameters) : undefined,
             },
             async (uri: any, params: any) => {
                 try {
@@ -150,9 +181,13 @@ export class MCPService implements OnModuleInit, OnModuleDestroy {
     private registerTool(metadata: ITool, instance: any, methodName: string) {
         const { name, description, parameters } = metadata;
 
-        this.server.tool(
+        // Tool parameters must be wrapped in an object for the server
+        const schema = parameters ? this.convertParametersToZod(parameters) : {};
+
+        // TypeScript doesn't understand the overload structure, we need to cast
+        (this.server.tool as any)(
             name,
-            this.convertParametersToZod(parameters),
+            schema,
             async (params: any) => {
                 try {
                     // Execute the decorated method with the parameters
@@ -174,10 +209,11 @@ export class MCPService implements OnModuleInit, OnModuleDestroy {
     private registerPrompt(metadata: IPrompt, instance: any, methodName: string) {
         const { name, description, template, parameters } = metadata;
 
-        this.server.prompt(
+        // TypeScript doesn't understand the overload structure, we need to cast
+        (this.server.prompt as any)(
             name,
             template,
-            this.convertParametersToZod(parameters),
+            parameters ? this.convertParametersToZod(parameters) : {},
             async (params: any) => {
                 try {
                     // Execute the decorated method to get any dynamic parameters

@@ -1,4 +1,4 @@
-import { DynamicModule, Module, Provider, Type } from '@nestjs/common';
+import { DynamicModule, Module, Provider } from '@nestjs/common';
 import { DiscoveryModule } from '@nestjs/core';
 import { DiscoveryService } from '@nestjs/core/discovery';
 import { MetadataScanner, Reflector } from '@nestjs/core';
@@ -7,6 +7,7 @@ import { IMCPOptions } from '@lib/types/mcp-options.interface';
 import { IMCPAsyncOptions } from '@lib/types/mcp-async-options.interface';
 import { IMCPOptionsFactory } from '@lib/types/mcp-options-factory.interface';
 import { MCPService } from '@lib/mcp.service';
+import { MCPController } from '@lib/mcp.controller';
 
 @Module({})
 export class MCPModule {
@@ -15,6 +16,7 @@ export class MCPModule {
             global: true,
             module: MCPModule,
             imports: [DiscoveryModule],
+            controllers: [MCPController],
             providers: [
                 {
                     provide: 'MCP_OPTIONS',
@@ -37,6 +39,7 @@ export class MCPModule {
             global: true,
             module: MCPModule,
             imports: [...(options.imports || []), DiscoveryModule],
+            controllers: [MCPController],
             providers: [
                 ...this.createAsyncProviders(options),
                 MetadataScanner,

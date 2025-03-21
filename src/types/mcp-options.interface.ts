@@ -12,4 +12,5 @@ export interface IMCPOptions {
     globalApiPrefix?: string;
     /** Server capabilities */
     capabilities?: Record<string, any>;
+    enableStdio?: boolean;
 }
