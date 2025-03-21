@@ -8,8 +8,8 @@ import { Request, Response } from 'express';
  */
 export class NestSSEAdapter {
     private logger = new Logger('NestSSEAdapter');
-    private transport: SSEServerTransport | null = null;
-    private sessionId: string | null = null;
+    private activeTransports: Map<string, SSEServerTransport> = new Map();
+    private serverReady = false;
 
     constructor(
         private options: {
@@ -20,42 +20,69 @@ export class NestSSEAdapter {
     ) {}
 
     /**
-     * Get the underlying SSE transport - creates it on first call with response
+     * Create a new transport for a response
      */
-    public getTransport(res?: Response): SSEServerTransport {
-        if (!this.transport && res) {
-            const messagesUrl = `${this.options.globalApiPrefix || ''}/${this.options.messagesEndpoint}`;
-            // Create transport with the endpoint and response object
-            this.transport = new SSEServerTransport(messagesUrl, res);
-            // Store session ID for later message handling
-            this.sessionId = (this.transport as any)._sessionId;
-        } else if (!this.transport) {
-            throw new Error('Cannot get transport without a response object on first call');
-        }
+    public createTransport(res: Response): SSEServerTransport {
+        const messagesUrl = `${this.options.globalApiPrefix || ''}/${this.options.messagesEndpoint}`;
+        // Create a new transport with the endpoint and response object
+        const transport = new SSEServerTransport(messagesUrl, res);
+        
+        // Store session ID for later message handling
+        const sessionId = (transport as any)._sessionId;
+        
+        // Add to active transports map
+        this.activeTransports.set(sessionId, transport);
+        
+        // Handle cleanup when connection closes
+        res.on('close', () => {
+            this.logger.log(`SSE connection closed for session: ${sessionId}`);
+            this.activeTransports.delete(sessionId);
+        });
+        
+        this.logger.log(`Created SSE transport with session ID: ${sessionId}`);
+        return transport;
+    }
 
-        return this.transport;
+    /**
+     * Get all active transports
+     */
+    public getActiveTransports(): SSEServerTransport[] {
+        return Array.from(this.activeTransports.values());
+    }
+
+    /**
+     * Set server ready state - used to track if the server is connected
+     */
+    public setServerReady(ready: boolean): void {
+        this.serverReady = ready;
+    }
+
+    /**
+     * Check if the server is ready
+     */
+    public isServerReady(): boolean {
+        return this.serverReady;
     }
 
     /**
      * Handle an SSE connection request
+     * @param req The HTTP request
+     * @param res The HTTP response
+     * @returns The created transport (NOT started - the server will start it)
      */
-    public async handleSSE(req: Request, res: Response): Promise<void> {
+    public handleSSE(req: Request, res: Response): SSEServerTransport {
         try {
-            // Create the transport if it doesn't exist
-            const transport = this.getTransport(res);
-
-            // Start the transport - this will set up response headers and handle closing
-            await transport.start();
-
-            this.logger.log(`SSE connection established with session ID: ${this.sessionId}`);
+            // Create a new transport for this connection
+            // DO NOT start it - McpServer.connect() will do that
+            return this.createTransport(res);
         } catch (error) {
-            this.logger.error('Error setting up SSE transport', error);
+            this.logger.error('Error creating SSE transport', error);
             // Only send error if headers not sent yet
             if (!res.headersSent) {
-                res.status(500).send('Error setting up SSE transport');
+                res.status(500).send('Error creating SSE transport');
             }
-
-            // We need to throw or return to propagate the error
+            
+            // We need to throw to propagate the error
             throw error;
         }
     }
@@ -64,29 +91,25 @@ export class NestSSEAdapter {
      * Handle a messages endpoint request
      */
     public async handleMessages(req: Request, res: Response): Promise<void> {
-        if (!this.transport || !this.sessionId) {
+        // Get the session ID from query params
+        const sessionId = req.query.sessionId as string;
+        
+        if (!sessionId || !this.activeTransports.has(sessionId)) {
             res.status(404).send('Session not found');
-            // Return explicitly to avoid TypeScript error
             return;
         }
-
-        // Check if the session ID matches
-        const requestSessionId = req.query.sessionId as string;
-        if (requestSessionId && requestSessionId !== this.sessionId) {
-            res.status(404).send('Session not found');
-            // Return explicitly to avoid TypeScript error
-            return;
-        }
-
+        
+        const transport = this.activeTransports.get(sessionId);
+        
         try {
             // Using the transport's method to handle the incoming message
-            await (this.transport as any).handlePostRequest(req, res);
+            await (transport as any).handlePostRequest(req, res);
         } catch (error) {
             this.logger.error('Error handling message', error);
             if (!res.headersSent) {
                 res.status(500).json({ error: 'Internal server error' });
             }
-
+            
             // Throw to propagate the error
             throw error;
         }

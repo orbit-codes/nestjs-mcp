@@ -1,26 +1,30 @@
 import { Controller, Get, Post, Req, Res, Inject } from '@nestjs/common';
-
 import { Request, Response } from 'express';
+import { MCPService } from '../mcp.service';
 
-import { MCPService } from './mcp.service';
-
+/**
+ * Base controller for MCP endpoints without throttling
+ */
 @Controller()
-export class MCPController {
+export class BaseMCPController {
   constructor(
-    @Inject('MCP_OPTIONS') private readonly options: any,
-    private readonly mcpService: MCPService,
+    @Inject('MCP_OPTIONS') protected readonly options: any,
+    protected readonly mcpService: MCPService,
   ) {}
 
+  /**
+   * Handle SSE connection requests
+   */
   @Get('mcp/sse')
   async sseHandler(@Req() req: Request, @Res() res: Response): Promise<void> {
-    // Pass the request to the MCP service
     await this.mcpService.handleSSEConnection(req, res);
-    // The response is handled by the SSE transport, so we don't return anything
   }
 
+  /**
+   * Handle message POST requests
+   */
   @Post('mcp/messages')
   async messagesHandler(@Req() req: Request, @Res() res: Response): Promise<void> {
-    // Pass the request to the MCP service
     await this.mcpService.handleMessages(req, res);
   }
 } 

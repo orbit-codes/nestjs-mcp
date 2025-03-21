@@ -21,7 +21,6 @@ export class MCPService implements OnModuleInit, OnModuleDestroy {
     private server: McpServer;
     private stdioTransport: StdioServerTransport | null = null;
     private sseAdapter: NestSSEAdapter | null = null;
-    private transportConnected = false;
 
     constructor(
         private readonly options: IMCPOptions,
@@ -38,14 +37,14 @@ export class MCPService implements OnModuleInit, OnModuleDestroy {
 
     async onModuleInit() {
         await this.scanAndRegisterProviders();
-
-        // Create the SSE adapter but don't connect it yet - this happens when a client connects
+        
+        // Create the SSE adapter
         this.sseAdapter = new NestSSEAdapter({
             messagesEndpoint: this.options.messagesEndpoint || 'mcp/messages',
             sseEndpoint: this.options.sseEndpoint || 'mcp/sse',
             globalApiPrefix: this.options.globalApiPrefix || '',
         });
-
+        
         // Initialize stdio transport if needed
         await this.setupStdioTransport();
     }
@@ -67,20 +66,15 @@ export class MCPService implements OnModuleInit, OnModuleDestroy {
             res.status(500).send('SSE transport not initialized');
             return;
         }
-
+        
         try {
-            // Handle the SSE connection
-            await this.sseAdapter.handleSSE(req, res);
-
-            // Get the transport
-            const transport = this.sseAdapter.getTransport();
-
-            // Connect the transport to the server if not already connected
-            if (!this.transportConnected) {
-                await this.server.connect(transport);
-                this.transportConnected = true;
-                this.logger.log('Connected SSE transport to server');
-            }
+            // Create a new transport for this connection (not started)
+            const transport = this.sseAdapter.handleSSE(req, res);
+            
+            // Connect the transport to the server
+            // This will automatically start the transport - no need to call start() manually
+            await this.server.connect(transport);
+            this.logger.log('Connected SSE transport to server');
         } catch (error) {
             this.logger.error('Error handling SSE connection', error);
             if (!res.headersSent) {
@@ -98,7 +92,7 @@ export class MCPService implements OnModuleInit, OnModuleDestroy {
             }
             return;
         }
-
+        
         await this.sseAdapter.handleMessages(req, res);
     }
 
