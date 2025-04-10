@@ -5,7 +5,7 @@ A NestJS integration for the Model Context Protocol (MCP), allowing you to easil
 ## Installation
 
 ```bash
-npm install nestjs-mcp @modelcontextprotocol/sdk zod
+npm i @orbit-codes/nestjs-mcp @modelcontextprotocol/sdk zod
 ```
 
 ## Features
