@@ -7,7 +7,10 @@
     "files": [
         "dist"
     ],
-    "repository": "git@github.com:orbit-codes/nestjs-mcp.git",
+    "repository": {
+        "type": "git",
+        "url": "git+ssh://git@github.com/orbit-codes/nestjs-mcp.git"
+    },
     "author": "Orbit Codes",
     "license": "MIT",
     "scripts": {
