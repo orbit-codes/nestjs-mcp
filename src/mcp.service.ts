@@ -243,7 +243,7 @@ export class MCPService implements OnModuleInit, OnModuleDestroy {
             } else if (type === 'array') {
                 zodSchema[key] = z.array(z.any());
             } else if (type === 'object') {
-                zodSchema[key] = z.record(z.any());
+                zodSchema[key] = z.record(z.string(), z.any());
             } else if (typeof type === 'object') {
                 // If it's already a Zod schema, use it directly
                 zodSchema[key] = type as z.ZodType;
