@@ -25,7 +25,4 @@ export interface ParameterDefinition {
  * 4. Zod schemas directly: { param: z.string() }
  * 5. Zod schemas in definition: { param: { type: z.string(), optional: true } }
  */
-export type ParameterSchema = Record<
-    string,
-    SimpleParameterType | `${SimpleParameterType}?` | z.ZodType | ParameterDefinition
->;
+export type ParameterSchema = Record<string, SimpleParameterType | `${SimpleParameterType}?` | z.ZodType | ParameterDefinition>;

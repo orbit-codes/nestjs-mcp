@@ -3,7 +3,15 @@ module.exports = {
     testEnvironment: 'node',
     testRegex: '.*\\.spec\\.ts$',
     transform: {
-        '^.+\\.(t|j)s$': 'ts-jest',
+        '^.+\\.(t|j)s$': ['ts-jest', {
+            tsconfig: {
+                module: 'commonjs',
+                moduleResolution: 'node',
+            },
+            diagnostics: {
+                ignoreCodes: [151002],
+            },
+        }],
     },
     collectCoverageFrom: ['**/*.(t|j)s'],
     coverageDirectory: './coverage',

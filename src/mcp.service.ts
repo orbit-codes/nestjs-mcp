@@ -37,14 +37,14 @@ export class MCPService implements OnModuleInit, OnModuleDestroy {
 
     async onModuleInit() {
         await this.scanAndRegisterProviders();
-        
+
         // Create the SSE adapter
         this.sseAdapter = new NestSSEAdapter({
             messagesEndpoint: this.options.messagesEndpoint || 'mcp/messages',
             sseEndpoint: this.options.sseEndpoint || 'mcp/sse',
             globalApiPrefix: this.options.globalApiPrefix || '',
         });
-        
+
         // Initialize stdio transport if needed
         await this.setupStdioTransport();
     }
@@ -103,7 +103,7 @@ export class MCPService implements OnModuleInit, OnModuleDestroy {
             if (!res.headersSent) {
                 res.status(503).json({
                     error: 'Service unavailable',
-                    message: errorMsg
+                    message: errorMsg,
                 });
             }
             return;
@@ -124,7 +124,7 @@ export class MCPService implements OnModuleInit, OnModuleDestroy {
             if (!res.headersSent) {
                 res.status(500).json({
                     error: 'Failed to establish SSE connection',
-                    message: errorMessage
+                    message: errorMessage,
                 });
             }
         }
@@ -139,7 +139,7 @@ export class MCPService implements OnModuleInit, OnModuleDestroy {
             if (!res.headersSent) {
                 res.status(503).json({
                     error: 'Service unavailable',
-                    message: errorMsg
+                    message: errorMsg,
                 });
             }
             return;
@@ -155,7 +155,7 @@ export class MCPService implements OnModuleInit, OnModuleDestroy {
             if (!res.headersSent) {
                 res.status(500).json({
                     error: 'Failed to process message',
-                    message: errorMessage
+                    message: errorMessage,
                 });
             }
         }

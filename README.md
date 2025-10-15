@@ -14,7 +14,11 @@ npm i @orbit-codes/nestjs-mcp @modelcontextprotocol/sdk zod
 - 🛠️ Expose MCP resources, tools, and prompts with simple annotations
 - 🔄 Support for both HTTP/SSE and stdio transports
 - 📦 Compatible with both ESM and CommonJS
-- 🧩 Dynamic module configuration
+- 🧩 Dynamic module configuration (sync & async)
+- 🎯 Optional parameters with multiple syntax options
+- 🔒 Full TypeScript type safety with Zod validation
+- 🎨 Customizable resource URI templates
+- 🛡️ Comprehensive error handling and validation
 - ✅ Well-tested and production-ready
 
 ## Quick Start
@@ -158,6 +162,108 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 export class AppModule {}
 ```
 
+## Advanced Features
+
+### Optional Parameters
+
+You can define optional parameters in three ways:
+
+```typescript
+import { Tool } from '@orbit-codes/nestjs-mcp';
+import { z } from 'zod';
+
+@Injectable()
+export class SearchService {
+  // Method 1: String with '?' suffix
+  @Tool({
+    name: 'search',
+    description: 'Search with optional filters',
+    parameters: {
+      query: 'string',      // Required
+      limit: 'number?',     // Optional
+      offset: 'number?',    // Optional
+    }
+  })
+  async search(params) {
+    const { query, limit = 10, offset = 0 } = params;
+    // ...
+  }
+
+  // Method 2: Parameter definition object
+  @Tool({
+    name: 'advancedSearch',
+    parameters: {
+      query: { type: 'string' },
+      filters: {
+        type: 'object',
+        optional: true,
+        description: 'Search filters'
+      }
+    }
+  })
+  async advancedSearch(params) {
+    // ...
+  }
+
+  // Method 3: Direct Zod schemas for complex validation
+  @Tool({
+    name: 'createUser',
+    parameters: {
+      email: z.string().email(),
+      age: z.number().min(18).max(120),
+      role: z.enum(['user', 'admin']).optional(),
+    }
+  })
+  async createUser(params) {
+    // params are fully validated by Zod
+  }
+}
+```
+
+### Custom Resource URI Templates
+
+Resources support custom URI templates:
+
+```typescript
+@Injectable()
+export class ArticleService {
+  @Resource({
+    name: 'article',
+    description: 'Get article by category and slug',
+    uriTemplate: 'article://{category}/{slug}',
+    parameters: {
+      category: 'string',
+      slug: 'string'
+    }
+  })
+  async getArticle(uri, params) {
+    const { category, slug } = params;
+    // Fetch article by category and slug
+  }
+}
+
+// Default template if not specified: {name}://{id}
+```
+
+### Accessing the MCP Service
+
+You can inject `MCPService` into your own services to interact with the MCP server programmatically:
+
+```typescript
+import { Injectable } from '@nestjs/common';
+import { MCPService } from '@orbit-codes/nestjs-mcp';
+
+@Injectable()
+export class MyService {
+  constructor(private readonly mcpService: MCPService) {}
+
+  async doSomething() {
+    // Access the underlying MCP server if needed
+    // (advanced use cases only)
+  }
+}
+```
+
 ## API Reference
 
 ### Decorators
@@ -165,33 +271,46 @@ export class AppModule {}
 #### @Resource(options)
 Marks a method as an MCP resource handler.
 
-- `name`: The name of the resource
-- `description`: Description of the resource
-- `parameters`: Parameter schema definition
+Options:
+- `name` (string): The name of the resource
+- `description` (string): Description of the resource
+- `parameters?` (ParameterSchema): Parameter schema definition
+- `uriTemplate?` (string): Custom URI template (default: `{name}://{id}`)
 
 #### @Tool(options)
 Marks a method as an MCP tool handler.
 
-- `name`: The name of the tool
-- `description`: Description of the tool
-- `parameters`: Parameter schema definition
+Options:
+- `name` (string): The name of the tool
+- `description` (string): Description of the tool
+- `parameters?` (ParameterSchema): Parameter schema definition
 
 #### @Prompt(options)
 Marks a method as an MCP prompt handler.
 
-- `name`: The name of the prompt
-- `description`: Description of the prompt
-- `template`: The prompt template with placeholders
-- `parameters`: Parameter schema definition
+Options:
+- `name` (string): The name of the prompt
+- `description` (string): Description of the prompt
+- `template` (string): The prompt template with `{{placeholder}}` syntax
+- `parameters?` (ParameterSchema): Parameter schema definition
 
 ### Module Options
 
-- `name`: The name of the MCP server
-- `version`: The version of the MCP server
-- `sseEndpoint`: The endpoint for SSE (default: '/mcp/sse')
-- `messagesEndpoint`: The endpoint for messages (default: '/mcp/messages')
-- `globalApiPrefix`: Optional API prefix for all endpoints
-- `capabilities`: Optional capabilities object
+- `name` (string): The name of the MCP server
+- `version` (string): The version of the MCP server
+- `sseEndpoint?` (string): The endpoint for SSE (default: 'mcp/sse')
+- `messagesEndpoint?` (string): The endpoint for messages (default: 'mcp/messages')
+- `globalApiPrefix?` (string): Optional API prefix for all endpoints
+- `capabilities?` (object): Optional MCP server capabilities
+- `enableStdio?` (boolean): Enable stdio transport (default: false)
+
+### Parameter Types
+
+Parameters can be defined as:
+- Simple types: `'string' | 'number' | 'boolean' | 'array' | 'object'`
+- Optional types: `'string?' | 'number?' | 'boolean?' | 'array?' | 'object?'`
+- Detailed definitions: `{ type: 'string', optional?: boolean, description?: string }`
+- Zod schemas: `z.string() | z.number() | z.object({...})` etc.
 
 ## Formatting and Linting
 

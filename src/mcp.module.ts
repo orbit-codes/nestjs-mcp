@@ -26,8 +26,7 @@ export class MCPModule {
                 Reflector,
                 {
                     provide: MCPService,
-                    useFactory: (discoveryService: DiscoveryService, metadataScanner: MetadataScanner, reflector: Reflector) => 
-                        new MCPService(options, discoveryService, metadataScanner, reflector),
+                    useFactory: (discoveryService: DiscoveryService, metadataScanner: MetadataScanner, reflector: Reflector) => new MCPService(options, discoveryService, metadataScanner, reflector),
                     inject: [DiscoveryService, MetadataScanner, Reflector],
                 },
             ],

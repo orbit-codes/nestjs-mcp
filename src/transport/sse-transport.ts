@@ -9,7 +9,6 @@ import { Request, Response } from 'express';
 export class NestSSEAdapter {
     private logger = new Logger('NestSSEAdapter');
     private activeTransports: Map<string, SSEServerTransport> = new Map();
-    private serverReady = false;
 
     constructor(
         private options: {
@@ -26,19 +25,19 @@ export class NestSSEAdapter {
         const messagesUrl = `${this.options.globalApiPrefix || ''}/${this.options.messagesEndpoint}`;
         // Create a new transport with the endpoint and response object
         const transport = new SSEServerTransport(messagesUrl, res);
-        
+
         // Store session ID for later message handling
         const sessionId = (transport as any)._sessionId;
-        
+
         // Add to active transports map
         this.activeTransports.set(sessionId, transport);
-        
+
         // Handle cleanup when connection closes
         res.on('close', () => {
             this.logger.log(`SSE connection closed for session: ${sessionId}`);
             this.activeTransports.delete(sessionId);
         });
-        
+
         this.logger.log(`Created SSE transport with session ID: ${sessionId}`);
         return transport;
     }
@@ -48,20 +47,6 @@ export class NestSSEAdapter {
      */
     public getActiveTransports(): SSEServerTransport[] {
         return Array.from(this.activeTransports.values());
-    }
-
-    /**
-     * Set server ready state - used to track if the server is connected
-     */
-    public setServerReady(ready: boolean): void {
-        this.serverReady = ready;
-    }
-
-    /**
-     * Check if the server is ready
-     */
-    public isServerReady(): boolean {
-        return this.serverReady;
     }
 
     /**
@@ -81,7 +66,7 @@ export class NestSSEAdapter {
             if (!res.headersSent) {
                 res.status(500).send('Error creating SSE transport');
             }
-            
+
             // We need to throw to propagate the error
             throw error;
         }
@@ -118,7 +103,7 @@ export class NestSSEAdapter {
             if (!res.headersSent) {
                 res.status(500).json({
                     error: 'Internal server error',
-                    message: errorMessage
+                    message: errorMessage,
                 });
             }
 
