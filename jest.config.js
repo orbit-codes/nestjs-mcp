@@ -8,6 +8,9 @@ module.exports = {
     collectCoverageFrom: ['**/*.(t|j)s'],
     coverageDirectory: './coverage',
     moduleFileExtensions: ['js', 'json', 'ts'],
+    moduleNameMapper: {
+        '^@lib/(.*)$': '<rootDir>/src/$1',
+    },
     coveragePathIgnorePatterns: [
         'node_modules',
         'dist',
