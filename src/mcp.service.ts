@@ -50,12 +50,47 @@ export class MCPService implements OnModuleInit, OnModuleDestroy {
     }
 
     async onModuleDestroy() {
+        // Clean up stdio transport
         if (this.stdioTransport) {
             try {
-                this.logger.log('Disconnecting stdio transport');
+                this.logger.log('Closing stdio transport');
+                await this.stdioTransport.close();
+                this.stdioTransport = null;
+                this.logger.log('Stdio transport closed successfully');
             } catch (error) {
-                this.logger.error('Failed to disconnect stdio transport', error);
+                this.logger.error('Failed to close stdio transport', error);
             }
+        }
+
+        // Clean up SSE adapter and active transports
+        if (this.sseAdapter) {
+            try {
+                this.logger.log('Cleaning up SSE adapter');
+                const activeTransports = this.sseAdapter.getActiveTransports();
+
+                // Close all active SSE transports
+                for (const transport of activeTransports) {
+                    try {
+                        await transport.close();
+                    } catch (error) {
+                        this.logger.error('Failed to close SSE transport', error);
+                    }
+                }
+
+                this.sseAdapter = null;
+                this.logger.log(`Closed ${activeTransports.length} active SSE transport(s)`);
+            } catch (error) {
+                this.logger.error('Failed to cleanup SSE adapter', error);
+            }
+        }
+
+        // Close the MCP server
+        try {
+            this.logger.log('Closing MCP server');
+            await this.server.close();
+            this.logger.log('MCP server closed successfully');
+        } catch (error) {
+            this.logger.error('Failed to close MCP server', error);
         }
     }
 
