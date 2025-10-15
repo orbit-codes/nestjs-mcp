@@ -1,6 +1,6 @@
 {
     "name": "@orbit-codes/nestjs-mcp",
-    "version": "1.0.18",
+    "version": "1.1.0",
     "description": "A NestJS package to integrate MCP",
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
