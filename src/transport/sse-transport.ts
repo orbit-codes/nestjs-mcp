@@ -93,23 +93,35 @@ export class NestSSEAdapter {
     public async handleMessages(req: Request, res: Response): Promise<void> {
         // Get the session ID from query params
         const sessionId = req.query.sessionId as string;
-        
-        if (!sessionId || !this.activeTransports.has(sessionId)) {
-            res.status(404).send('Session not found');
+
+        if (!sessionId) {
+            this.logger.error('Missing sessionId in message request');
+            res.status(400).json({ error: 'Missing sessionId parameter' });
             return;
         }
-        
+
+        if (!this.activeTransports.has(sessionId)) {
+            this.logger.error(`Session not found: ${sessionId}`);
+            res.status(404).json({ error: 'Session not found or expired' });
+            return;
+        }
+
         const transport = this.activeTransports.get(sessionId);
-        
+
         try {
             // Using the transport's method to handle the incoming message
             await (transport as any).handlePostRequest(req, res);
         } catch (error) {
-            this.logger.error('Error handling message', error);
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            this.logger.error(`Error handling message for session ${sessionId}: ${errorMessage}`, error);
+
             if (!res.headersSent) {
-                res.status(500).json({ error: 'Internal server error' });
+                res.status(500).json({
+                    error: 'Internal server error',
+                    message: errorMessage
+                });
             }
-            
+
             // Throw to propagate the error
             throw error;
         }

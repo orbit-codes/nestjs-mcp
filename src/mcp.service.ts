@@ -97,23 +97,35 @@ export class MCPService implements OnModuleInit, OnModuleDestroy {
     // Handle SSE connection from controller
     async handleSSEConnection(req: Request, res: Response): Promise<void> {
         if (!this.sseAdapter) {
-            this.logger.error('SSE adapter not initialized');
-            res.status(500).send('SSE transport not initialized');
+            const errorMsg = 'SSE adapter not initialized - module may not have completed initialization';
+            this.logger.error(errorMsg);
+
+            if (!res.headersSent) {
+                res.status(503).json({
+                    error: 'Service unavailable',
+                    message: errorMsg
+                });
+            }
             return;
         }
-        
+
         try {
             // Create a new transport for this connection (not started)
             const transport = this.sseAdapter.handleSSE(req, res);
-            
+
             // Connect the transport to the server
             // This will automatically start the transport - no need to call start() manually
             await this.server.connect(transport);
             this.logger.log('Connected SSE transport to server');
         } catch (error) {
-            this.logger.error('Error handling SSE connection', error);
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            this.logger.error(`Error handling SSE connection: ${errorMessage}`, error);
+
             if (!res.headersSent) {
-                res.status(500).send('Error handling SSE connection');
+                res.status(500).json({
+                    error: 'Failed to establish SSE connection',
+                    message: errorMessage
+                });
             }
         }
     }
@@ -121,14 +133,32 @@ export class MCPService implements OnModuleInit, OnModuleDestroy {
     // Handle messages from controller
     async handleMessages(req: Request, res: Response): Promise<void> {
         if (!this.sseAdapter) {
-            this.logger.error('SSE adapter not initialized');
+            const errorMsg = 'SSE adapter not initialized - module may not have completed initialization';
+            this.logger.error(errorMsg);
+
             if (!res.headersSent) {
-                res.status(500).send('SSE transport not initialized');
+                res.status(503).json({
+                    error: 'Service unavailable',
+                    message: errorMsg
+                });
             }
             return;
         }
-        
-        await this.sseAdapter.handleMessages(req, res);
+
+        try {
+            await this.sseAdapter.handleMessages(req, res);
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            this.logger.error(`Error handling messages: ${errorMessage}`, error);
+
+            // The adapter already handles its own error responses, so only respond if needed
+            if (!res.headersSent) {
+                res.status(500).json({
+                    error: 'Failed to process message',
+                    message: errorMessage
+                });
+            }
+        }
     }
 
     private async setupStdioTransport() {
@@ -179,9 +209,11 @@ export class MCPService implements OnModuleInit, OnModuleDestroy {
     }
 
     private registerResource(metadata: IResource, instance: any, methodName: string) {
-        const { name, description, parameters } = metadata;
+        const { name, description, parameters, uriTemplate } = metadata;
 
-        const template = new ResourceTemplate(`${name}://{id}`, { list: undefined });
+        // Use custom URI template or default
+        const templateString = uriTemplate || `${name}://{id}`;
+        const template = new ResourceTemplate(templateString, { list: undefined });
 
         this.server.resource(
             name,
@@ -194,17 +226,23 @@ export class MCPService implements OnModuleInit, OnModuleDestroy {
                 try {
                     // Execute the decorated method with the parameters
                     const result = await instance[methodName](uri, params);
+
+                    // Validate that result has the expected structure
+                    if (!result) {
+                        throw new Error(`Resource '${name}' handler returned null or undefined`);
+                    }
+
                     return {
                         contents: Array.isArray(result) ? result : [result],
                     };
                 } catch (error) {
-                    this.logger.error(`Error executing resource '${name}'`, error);
+                    this.logger.error(`Error executing resource '${name}': ${error instanceof Error ? error.message : String(error)}`);
                     throw error;
                 }
             },
         );
 
-        this.logger.log(`Registered MCP resource: ${name}`);
+        this.logger.log(`Registered MCP resource: ${name} with template: ${templateString}`);
     }
 
     private registerTool(metadata: ITool, instance: any, methodName: string) {
@@ -221,11 +259,17 @@ export class MCPService implements OnModuleInit, OnModuleDestroy {
                 try {
                     // Execute the decorated method with the parameters
                     const result = await instance[methodName](params);
+
+                    // Validate that result exists
+                    if (result === null || result === undefined) {
+                        throw new Error(`Tool '${name}' handler returned null or undefined`);
+                    }
+
                     return {
                         content: Array.isArray(result) ? result : [{ type: 'text', text: String(result) }],
                     };
                 } catch (error) {
-                    this.logger.error(`Error executing tool '${name}'`, error);
+                    this.logger.error(`Error executing tool '${name}': ${error instanceof Error ? error.message : String(error)}`);
                     throw error;
                 }
             },
@@ -238,6 +282,11 @@ export class MCPService implements OnModuleInit, OnModuleDestroy {
     private registerPrompt(metadata: IPrompt, instance: any, methodName: string) {
         const { name, description, template, parameters } = metadata;
 
+        // Validate template
+        if (!template || template.trim() === '') {
+            throw new Error(`Prompt '${name}' has an empty template`);
+        }
+
         // TypeScript doesn't understand the overload structure, we need to cast
         (this.server.prompt as any)(
             name,
@@ -247,12 +296,14 @@ export class MCPService implements OnModuleInit, OnModuleDestroy {
                 try {
                     // Execute the decorated method to get any dynamic parameters
                     const dynamicParams = await instance[methodName](params);
+
+                    // Merge parameters, with dynamic params taking precedence
                     return {
                         ...params,
-                        ...dynamicParams,
+                        ...(dynamicParams || {}),
                     };
                 } catch (error) {
-                    this.logger.error(`Error executing prompt '${name}'`, error);
+                    this.logger.error(`Error executing prompt '${name}': ${error instanceof Error ? error.message : String(error)}`);
                     throw error;
                 }
             },
@@ -267,27 +318,67 @@ export class MCPService implements OnModuleInit, OnModuleDestroy {
 
         const zodSchema: Record<string, z.ZodType> = {};
 
-        for (const [key, type] of Object.entries(parameters)) {
-            // Simple conversion from common types to Zod types
-            if (type === 'string') {
-                zodSchema[key] = z.string();
-            } else if (type === 'number') {
-                zodSchema[key] = z.number();
-            } else if (type === 'boolean') {
-                zodSchema[key] = z.boolean();
-            } else if (type === 'array') {
-                zodSchema[key] = z.array(z.any());
-            } else if (type === 'object') {
-                zodSchema[key] = z.record(z.string(), z.any());
-            } else if (typeof type === 'object') {
-                // If it's already a Zod schema, use it directly
-                zodSchema[key] = type as z.ZodType;
-            } else {
-                // Default to any
-                zodSchema[key] = z.any();
+        for (const [key, value] of Object.entries(parameters)) {
+            let schema: z.ZodType;
+            let isOptional = false;
+
+            // Handle string with optional marker (e.g., 'string?')
+            if (typeof value === 'string' && value.endsWith('?')) {
+                const baseType = value.slice(0, -1) as 'string' | 'number' | 'boolean' | 'array' | 'object';
+                schema = this.getZodSchemaForType(baseType);
+                isOptional = true;
             }
+            // Handle simple string type (e.g., 'string', 'number')
+            else if (typeof value === 'string') {
+                schema = this.getZodSchemaForType(value as any);
+            }
+            // Handle parameter definition object
+            else if (typeof value === 'object' && value !== null && 'type' in value) {
+                const definition = value as any;
+
+                // Check if type is a string or a Zod schema
+                if (typeof definition.type === 'string') {
+                    schema = this.getZodSchemaForType(definition.type);
+                } else {
+                    // It's already a Zod schema
+                    schema = definition.type as z.ZodType;
+                }
+
+                isOptional = definition.optional === true;
+            }
+            // Handle direct Zod schema
+            else if (typeof value === 'object' && value !== null) {
+                // Assume it's a Zod schema
+                schema = value as z.ZodType;
+            }
+            // Fallback to any
+            else {
+                this.logger.warn(`Unknown parameter type for '${key}', defaulting to z.any()`);
+                schema = z.any();
+            }
+
+            // Apply optional() if needed
+            zodSchema[key] = isOptional ? schema.optional() : schema;
         }
 
         return zodSchema;
+    }
+
+    private getZodSchemaForType(type: string): z.ZodType {
+        switch (type) {
+            case 'string':
+                return z.string();
+            case 'number':
+                return z.number();
+            case 'boolean':
+                return z.boolean();
+            case 'array':
+                return z.array(z.any());
+            case 'object':
+                return z.record(z.string(), z.any());
+            default:
+                this.logger.warn(`Unknown parameter type '${type}', defaulting to z.any()`);
+                return z.any();
+        }
     }
 }
