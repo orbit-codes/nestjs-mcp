@@ -3,7 +3,11 @@ module.exports = {
     testEnvironment: 'node',
     testRegex: '.*\\.spec\\.ts$',
     transform: {
-        '^.+\\.(t|j)s$': 'ts-jest',
+        '^.+\\.(t|j)s$': ['ts-jest', {
+            tsconfig: {
+                types: ['jest', 'node'],
+            },
+        }],
     },
     moduleNameMapper: {
         '^@lib/(.*)$': '<rootDir>/src/$1',

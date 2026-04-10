@@ -41,13 +41,13 @@
         "@swc/core": "^1.15.24",
         "@types/express": "^5.0.6",
         "@types/jest": "^30.0.0",
-        "@types/node": "^24.12.2",
+        "@types/node": "^25.6.0",
         "jest": "^30.3.0",
         "reflect-metadata": "^0.2.2",
         "rxjs": "^7.8.2",
         "ts-jest": "^29.4.9",
         "tsup": "^8.5.1",
-        "typescript": "^5.9.3",
+        "typescript": "^6.0.2",
         "zod": "^4.3.6"
     }
 }
