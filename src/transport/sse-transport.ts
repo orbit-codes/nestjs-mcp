@@ -1,7 +1,6 @@
-import { Logger } from '@nestjs/common';
-
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
-import { Request, Response } from 'express';
+import { Logger } from '@nestjs/common';
+import type { Request, Response } from 'express';
 
 /**
  * Custom SSE transport adapter that connects NestJS HTTP to the MCP SDK
@@ -26,19 +25,19 @@ export class NestSSEAdapter {
         const messagesUrl = `${this.options.globalApiPrefix || ''}/${this.options.messagesEndpoint}`;
         // Create a new transport with the endpoint and response object
         const transport = new SSEServerTransport(messagesUrl, res);
-        
+
         // Store session ID for later message handling
         const sessionId = (transport as any)._sessionId;
-        
+
         // Add to active transports map
         this.activeTransports.set(sessionId, transport);
-        
+
         // Handle cleanup when connection closes
         res.on('close', () => {
             this.logger.log(`SSE connection closed for session: ${sessionId}`);
             this.activeTransports.delete(sessionId);
         });
-        
+
         this.logger.log(`Created SSE transport with session ID: ${sessionId}`);
         return transport;
     }
@@ -70,7 +69,7 @@ export class NestSSEAdapter {
      * @param res The HTTP response
      * @returns The created transport (NOT started - the server will start it)
      */
-    public handleSSE(req: Request, res: Response): SSEServerTransport {
+    public handleSSE(_req: Request, res: Response): SSEServerTransport {
         try {
             // Create a new transport for this connection
             // DO NOT start it - McpServer.connect() will do that
@@ -81,7 +80,7 @@ export class NestSSEAdapter {
             if (!res.headersSent) {
                 res.status(500).send('Error creating SSE transport');
             }
-            
+
             // We need to throw to propagate the error
             throw error;
         }
@@ -93,14 +92,14 @@ export class NestSSEAdapter {
     public async handleMessages(req: Request, res: Response): Promise<void> {
         // Get the session ID from query params
         const sessionId = req.query.sessionId as string;
-        
+
         if (!sessionId || !this.activeTransports.has(sessionId)) {
             res.status(404).send('Session not found');
             return;
         }
-        
+
         const transport = this.activeTransports.get(sessionId);
-        
+
         try {
             // Using the transport's method to handle the incoming message
             await (transport as any).handlePostRequest(req, res);
@@ -109,7 +108,7 @@ export class NestSSEAdapter {
             if (!res.headersSent) {
                 res.status(500).json({ error: 'Internal server error' });
             }
-            
+
             // Throw to propagate the error
             throw error;
         }

@@ -20,6 +20,7 @@ export default defineConfig({
         '@nestjs/core',
         'reflect-metadata',
         '@modelcontextprotocol/sdk',
+        'express',
         'zod',
     ],
 }); 

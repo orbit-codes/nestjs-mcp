@@ -1,13 +1,11 @@
-import { DynamicModule, Module, Provider, Type } from '@nestjs/common';
-import { DiscoveryModule } from '@nestjs/core';
-import { DiscoveryService } from '@nestjs/core/discovery';
-import { MetadataScanner, Reflector } from '@nestjs/core';
-
-import { IMCPOptions } from '@lib/types/mcp-options.interface';
-import { IMCPAsyncOptions } from '@lib/types/mcp-async-options.interface';
-import { IMCPOptionsFactory } from '@lib/types/mcp-options-factory.interface';
-import { MCPService } from '@lib/mcp.service';
 import { BaseMCPController } from '@lib/controllers/base-mcp.controller';
+import { MCPService } from '@lib/mcp.service';
+import type { IMCPAsyncOptions } from '@lib/types/mcp-async-options.interface';
+import type { IMCPOptions } from '@lib/types/mcp-options.interface';
+import type { IMCPOptionsFactory } from '@lib/types/mcp-options-factory.interface';
+import { type DynamicModule, Module, type Provider } from '@nestjs/common';
+import { DiscoveryModule, MetadataScanner, Reflector } from '@nestjs/core';
+import { DiscoveryService } from '@nestjs/core/discovery';
 
 @Module({})
 export class MCPModule {
@@ -26,8 +24,7 @@ export class MCPModule {
                 Reflector,
                 {
                     provide: MCPService,
-                    useFactory: (discoveryService: DiscoveryService, metadataScanner: MetadataScanner, reflector: Reflector) => 
-                        new MCPService(options, discoveryService, metadataScanner, reflector),
+                    useFactory: (discoveryService: DiscoveryService, metadataScanner: MetadataScanner, reflector: Reflector) => new MCPService(options, discoveryService, metadataScanner, reflector),
                     inject: [DiscoveryService, MetadataScanner, Reflector],
                 },
             ],
@@ -42,7 +39,7 @@ export class MCPModule {
             imports: [...(options.imports || []), DiscoveryModule],
             controllers: [BaseMCPController],
             providers: [
-                ...this.createAsyncProviders(options),
+                ...MCPModule.createAsyncProviders(options),
                 MetadataScanner,
                 Reflector,
                 {
@@ -58,12 +55,12 @@ export class MCPModule {
 
     private static createAsyncProviders(options: IMCPAsyncOptions): Provider[] {
         if (options.useExisting || options.useFactory) {
-            return [this.createAsyncOptionsProvider(options)];
+            return [MCPModule.createAsyncOptionsProvider(options)];
         }
 
         // If useClass is used
         return [
-            this.createAsyncOptionsProvider(options),
+            MCPModule.createAsyncOptionsProvider(options),
             {
                 provide: options.useClass!,
                 useClass: options.useClass!,

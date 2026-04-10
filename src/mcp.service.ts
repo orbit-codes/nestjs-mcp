@@ -1,17 +1,14 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { MetadataScanner, Reflector } from '@nestjs/core';
-import { DiscoveryService } from '@nestjs/core/discovery';
-
+import type { IPrompt, IResource, ITool } from '@lib/decorators';
+import { NestSSEAdapter } from '@lib/transport/sse-transport';
+import type { IMCPOptions } from '@lib/types';
+import { MetadataKey } from '@lib/types/metadata.type';
 import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { Request, Response } from 'express';
-
+import { Injectable, Logger, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
+import { MetadataScanner, Reflector } from '@nestjs/core';
+import { DiscoveryService } from '@nestjs/core/discovery';
+import type { Request, Response } from 'express';
 import { z } from 'zod';
-
-import { MetadataKey } from '@lib/types/metadata.type';
-import type { IResource, ITool, IPrompt } from '@lib/decorators';
-import type { IMCPOptions } from '@lib/types';
-import { NestSSEAdapter } from '@lib/transport/sse-transport';
 
 export type TTransportType = 'stdio';
 
@@ -28,23 +25,27 @@ export class MCPService implements OnModuleInit, OnModuleDestroy {
         private readonly metadataScanner: MetadataScanner,
         private readonly reflector: Reflector,
     ) {
-        this.server = new McpServer({
-            name: options.name,
-            version: options.version,
-            capabilities: options.capabilities || {},
-        });
+        this.server = new McpServer(
+            {
+                name: options.name,
+                version: options.version,
+            },
+            {
+                capabilities: options.capabilities || {},
+            },
+        );
     }
 
     async onModuleInit() {
         await this.scanAndRegisterProviders();
-        
+
         // Create the SSE adapter
         this.sseAdapter = new NestSSEAdapter({
             messagesEndpoint: this.options.messagesEndpoint || 'mcp/messages',
             sseEndpoint: this.options.sseEndpoint || 'mcp/sse',
             globalApiPrefix: this.options.globalApiPrefix || '',
         });
-        
+
         // Initialize stdio transport if needed
         await this.setupStdioTransport();
     }
@@ -66,11 +67,11 @@ export class MCPService implements OnModuleInit, OnModuleDestroy {
             res.status(500).send('SSE transport not initialized');
             return;
         }
-        
+
         try {
             // Create a new transport for this connection (not started)
             const transport = this.sseAdapter.handleSSE(req, res);
-            
+
             // Connect the transport to the server
             // This will automatically start the transport - no need to call start() manually
             await this.server.connect(transport);
@@ -92,7 +93,7 @@ export class MCPService implements OnModuleInit, OnModuleDestroy {
             }
             return;
         }
-        
+
         await this.sseAdapter.handleMessages(req, res);
     }
 
@@ -144,7 +145,7 @@ export class MCPService implements OnModuleInit, OnModuleDestroy {
     }
 
     private registerResource(metadata: IResource, instance: any, methodName: string) {
-        const { name, description, parameters } = metadata;
+        const { name, description } = metadata;
 
         const template = new ResourceTemplate(`${name}://{id}`, { list: undefined });
 
@@ -153,7 +154,6 @@ export class MCPService implements OnModuleInit, OnModuleDestroy {
             template,
             {
                 description,
-                parameters: parameters ? this.convertParametersToZod(parameters) : undefined,
             },
             async (uri: any, params: any) => {
                 try {

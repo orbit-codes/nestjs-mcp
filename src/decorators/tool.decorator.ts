@@ -1,6 +1,5 @@
-import { SetMetadata } from '@nestjs/common';
-
 import { MetadataKey } from '@lib/types/metadata.type';
+import { SetMetadata } from '@nestjs/common';
 
 export interface ITool {
     name: string;

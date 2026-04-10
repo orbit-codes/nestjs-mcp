@@ -25,7 +25,7 @@
         "prepublishOnly": "npm run build"
     },
     "dependencies": {
-        "@modelcontextprotocol/sdk": "^1.18.1"
+        "@modelcontextprotocol/sdk": "^1.29.0"
     },
     "peerDependencies": {
         "@nestjs/common": "^8.0.0 || ^9.0.0 || ^10.0.0 || ^11.0.0",
@@ -33,22 +33,21 @@
         "reflect-metadata": "^0.1.13 || ^0.2.0"
     },
     "devDependencies": {
-        "@biomejs/biome": "^2.2.6",
-        "@modelcontextprotocol/sdk": "^1.18.1",
-        "@nestjs/common": "^11.1.6",
-        "@nestjs/core": "^11.1.6",
-        "@nestjs/testing": "^11.1.6",
-        "@swc/core": "^1.13.5",
-        "@types/express": "^5.0.3",
+        "@biomejs/biome": "^2.4.11",
+        "@modelcontextprotocol/sdk": "^1.29.0",
+        "@nestjs/common": "^11.1.18",
+        "@nestjs/core": "^11.1.18",
+        "@nestjs/testing": "^11.1.18",
+        "@swc/core": "^1.15.24",
+        "@types/express": "^5.0.6",
         "@types/jest": "^30.0.0",
-        "@types/node": "^24.7.2",
-        "eslint": "^9.37.0",
-        "jest": "^30.2.0",
+        "@types/node": "^24.12.2",
+        "jest": "^30.3.0",
         "reflect-metadata": "^0.2.2",
         "rxjs": "^7.8.2",
-        "ts-jest": "^29.4.4",
-        "tsup": "^8.5.0",
-        "typescript": "^5.9.2",
-        "zod": "^4.1.12"
+        "ts-jest": "^29.4.9",
+        "tsup": "^8.5.1",
+        "typescript": "^5.9.3",
+        "zod": "^4.3.6"
     }
 }

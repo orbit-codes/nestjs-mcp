@@ -23,7 +23,7 @@ npm i @orbit-codes/nestjs-mcp @modelcontextprotocol/sdk zod
 
 ```typescript
 import { Module } from '@nestjs/common';
-import { MCPModule } from 'nestjs-mcp';
+import { MCPModule } from '@orbit-codes/nestjs-mcp';
 
 @Module({
   imports: [
@@ -47,7 +47,7 @@ export class AppModule {}
 
 ```typescript
 import { Injectable } from '@nestjs/common';
-import { Resource } from 'nestjs-mcp';
+import { Resource } from '@orbit-codes/nestjs-mcp';
 
 @Injectable()
 export class UsersService {
@@ -83,7 +83,7 @@ export class UsersService {
 
 ```typescript
 import { Injectable } from '@nestjs/common';
-import { Tool } from 'nestjs-mcp';
+import { Tool } from '@orbit-codes/nestjs-mcp';
 
 @Injectable()
 export class CalculatorService {
@@ -107,7 +107,7 @@ export class CalculatorService {
 
 ```typescript
 import { Injectable } from '@nestjs/common';
-import { Prompt } from 'nestjs-mcp';
+import { Prompt } from '@orbit-codes/nestjs-mcp';
 
 @Injectable()
 export class PromptService {
@@ -137,7 +137,7 @@ You can also configure the MCP module asynchronously:
 
 ```typescript
 import { Module } from '@nestjs/common';
-import { MCPModule } from 'nestjs-mcp';
+import { MCPModule } from '@orbit-codes/nestjs-mcp';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
 @Module({
@@ -197,16 +197,16 @@ Marks a method as an MCP prompt handler.
 
 ```bash
 # Format the codebase
-yarn format
+pnpm format
 
 # Check formatting
-yarn format:check
+pnpm format:check
 
 # Lint the codebase
-yarn lint
+pnpm lint
 
 # Run all checks
-yarn check
+pnpm check
 ```
 
 ## License

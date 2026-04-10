@@ -1,7 +1,6 @@
-import { ModuleMetadata, Type } from '@nestjs/common';
-
-import { IMCPOptions } from '@lib/types/mcp-options.interface';
-import { IMCPOptionsFactory } from '@lib/types/mcp-options-factory.interface';
+import type { IMCPOptions } from '@lib/types/mcp-options.interface';
+import type { IMCPOptionsFactory } from '@lib/types/mcp-options-factory.interface';
+import type { ModuleMetadata, Type } from '@nestjs/common';
 
 export interface IMCPAsyncOptions extends Pick<ModuleMetadata, 'imports'> {
     useExisting?: Type<IMCPOptionsFactory>;

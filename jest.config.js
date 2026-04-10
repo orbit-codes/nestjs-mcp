@@ -5,6 +5,9 @@ module.exports = {
     transform: {
         '^.+\\.(t|j)s$': 'ts-jest',
     },
+    moduleNameMapper: {
+        '^@lib/(.*)$': '<rootDir>/src/$1',
+    },
     collectCoverageFrom: ['**/*.(t|j)s'],
     coverageDirectory: './coverage',
     moduleFileExtensions: ['js', 'json', 'ts'],
@@ -12,4 +15,4 @@ module.exports = {
         'node_modules',
         'dist',
     ],
-}; 
+};

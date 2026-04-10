@@ -1,7 +1,7 @@
-import { Test } from '@nestjs/testing';
 import { Injectable } from '@nestjs/common';
+import { Test } from '@nestjs/testing';
+import { Prompt, Resource, Tool } from '../src/decorators';
 import { MCPModule } from '../src/mcp.module';
-import { Resource, Tool, Prompt } from '../src/decorators';
 import { MetadataKey } from '../src/types/metadata.type';
 
 describe('MCPModule', () => {
